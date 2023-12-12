@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Food_App</string>
+    <string name="sign_in">Sign In</string>
+    <string name="sign_up">Sign Up</string>
+    <string name="full_name">Full Name</string>
+    <string name="email_address">Email Address</string>
+    <string name="password">Password</string>
+
+</resources>

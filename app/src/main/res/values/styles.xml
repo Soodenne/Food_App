@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="RecyclerViewItemText">
+        <item name="android:textSize">20sp</item> <!-- Đổi giá trị này thành kích thước chữ bạn muốn -->
+        <!-- Các thuộc tính khác của chữ nếu cần -->
+    </style>
+</resources>
