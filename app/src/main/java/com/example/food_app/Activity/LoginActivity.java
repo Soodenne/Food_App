@@ -26,28 +26,22 @@ public class LoginActivity extends AppCompatActivity {
     Connection connect;
     private Button login_btn;
     EditText inputEmail, inputPassword;
-    Bundle dataBundle;
-    SharedPreferences sharedPreferences;
-    TextView Full_name;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
         initView();
-        getBundle();
-
+        login_btn.setOnClickListener(v -> {
+            checkLogin();
+        });
     }
     public void register(View view) {
         startActivity(new Intent(LoginActivity.this, RegistrationActivity.class));
     }
     private List<UserDomain> userList = new ArrayList<>();
-    public List<UserDomain> getUserList() {
-        return userList;
-    }
     public void checkLogin(){
         String userInputEmail  = inputEmail.getText().toString();
         String userInputPassword  = inputPassword.getText().toString();
-//        List<UserDomain> userList = new ArrayList<>();
         try{
             ConnectionHelper connectionHelper = new ConnectionHelper();
             connect = connectionHelper.connectionclass();
@@ -84,10 +78,4 @@ public class LoginActivity extends AppCompatActivity {
         inputEmail = findViewById(R.id.email);
         inputPassword = findViewById(R.id.password);
     }
-    private void getBundle(){
-        login_btn.setOnClickListener(v -> {
-            checkLogin();
-        });
-    }
-
 }

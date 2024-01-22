@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.GranularRoundedCorners;
+import com.example.food_app.Activity.CartActivity;
 import com.example.food_app.Model.FoodDomain;
 import com.example.food_app.Helper.ChangeNumberItemsListener;
 import com.example.food_app.Helper.ManagementCart;
@@ -20,7 +21,7 @@ import com.example.food_app.R;
 import java.util.ArrayList;
 
 public class CartListAdapter extends RecyclerView.Adapter<CartListAdapter.ViewHolder> {
-    public CartListAdapter(ArrayList<FoodDomain> listFoodSelected, Context context, ChangeNumberItemsListener changeNumberItemsListener) {
+    public CartListAdapter(ArrayList<FoodDomain> listFoodSelected, CartActivity context, ChangeNumberItemsListener changeNumberItemsListener) {
         this.listFoodSelected = listFoodSelected;
         managementCart = new ManagementCart(context);
         this.changeNumberItemsListener = changeNumberItemsListener;
@@ -57,9 +58,10 @@ public class CartListAdapter extends RecyclerView.Adapter<CartListAdapter.ViewHo
                 changeNumberItemsListener.changed();
         }));
         holder.minusItem.setOnClickListener(v -> managementCart.minusNumberFood(listFoodSelected, position, () -> {
-            notifyDataSetChanged();
+            notifyItemRemoved(position);
             changeNumberItemsListener.changed();
         }));
+
     }
 
     @Override

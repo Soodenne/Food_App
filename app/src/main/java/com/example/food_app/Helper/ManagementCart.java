@@ -4,11 +4,15 @@ import android.content.Context;
 import android.os.AsyncTask;
 import android.widget.Toast;
 
+import androidx.recyclerview.widget.RecyclerView;
+
 import com.example.food_app.Activity.CartActivity;
 import com.example.food_app.Activity.ConnectionHelper;
 import com.example.food_app.Activity.SharedData;
+import com.example.food_app.Adapter.CartListAdapter;
 import com.example.food_app.Model.Food;
 import com.example.food_app.Model.FoodDomain;
+import com.example.food_app.R;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -18,7 +22,8 @@ import java.util.ArrayList;
 
 public class ManagementCart {
     private static Context context;
-    private TinyDB tinyDB;
+    private static TinyDB tinyDB;
+    private static CartListAdapter adapter;
 
     public ManagementCart(Context context) {
         this.context = context;
@@ -55,6 +60,7 @@ public class ManagementCart {
         }
         return false;
     }
+
     public static void updateFood(FoodDomain object) {
         Connection connect;
         int userId = SharedData.getInstance().getUserId();
@@ -86,6 +92,7 @@ public class ManagementCart {
             throw new RuntimeException(e);
         }
     }
+
     // Your existing insertFood method remains unchanged
     public void insertFood(FoodDomain object) {
         Connection connect;
@@ -118,39 +125,110 @@ public class ManagementCart {
         }
     }
 
-    public ArrayList<FoodDomain> getListCart(){
-        return tinyDB.getListObject("CartList");
+//    public ArrayList<FoodDomain> getListCart() {
+//        return tinyDB.getListObject("CartList");
+//    }
+
+    public void plusNumberFood(ArrayList<FoodDomain> listfood, int position, Runnable updateCallback) {
+        // Logic tăng số lượng của món ăn được chọn
+        listfood.get(position).setNumberInCart(listfood.get(position).getNumberInCart() + 1);
+
+        // Logic cập nhật dữ liệu trong TinyDB
+        tinyDB.putListObject("CartList", listfood);
+
+        // Logic cập nhật dữ liệu trên SQL Server bất đồng bộ
+        new UpdateOrderAsyncTask().execute(listfood, position);
+
+        // Callback để thông báo hoàn tất việc cập nhật
+        updateCallback.run();
     }
 
-public void plusNumberFood(ArrayList<FoodDomain> listfood, int position, Runnable updateCallback) {
-    // Logic tăng số lượng của món ăn được chọn
-    listfood.get(position).setNumberInCart(listfood.get(position).getNumberInCart() + 1);
-
-    // Logic cập nhật dữ liệu trong TinyDB
-    tinyDB.putListObject("CartList", listfood);
-
-    // Logic cập nhật dữ liệu trên SQL Server bất đồng bộ
-    new UpdateOrderAsyncTask().execute(listfood, position);
-
-    // Callback để thông báo hoàn tất việc cập nhật
-    updateCallback.run();
-}
-
-    public void minusNumberFood(ArrayList<FoodDomain> listfood, int position, Runnable updateCallback) {
+    public void minusNumberFood(ArrayList<FoodDomain> listFoodSelected, int position, Runnable updateCallback) {
         // Logic giảm số lượng của món ăn được chọn
-        if (listfood.get(position).getNumberInCart() > 1) {
-            listfood.get(position).setNumberInCart(listfood.get(position).getNumberInCart() - 1);
+        if (listFoodSelected.get(position).getNumberInCart() > 1) {
+            listFoodSelected.get(position).setNumberInCart(listFoodSelected.get(position).getNumberInCart() - 1);
 
             // Logic cập nhật dữ liệu trong TinyDB
-            tinyDB.putListObject("CartList", listfood);
+            tinyDB.putListObject("CartList", listFoodSelected);
 
-            // Logic cập nhật dữ liệu trên SQL Server bất đồng bộ
-            new UpdateOrderAsyncTask().execute(listfood, position);
+            // Kiểm tra nếu totalEachItem lớn hơn 0 trước khi cập nhật vào cơ sở dữ liệu
+            if (listFoodSelected.get(position).getNumberInCart() > 0) {
+                // Logic cập nhật dữ liệu trên SQL Server bất đồng bộ
+                new UpdateOrderAsyncTask().execute(listFoodSelected, position);
+            } else {
+                // Nếu totalEachItem là 0, xóa mục khỏi cả cơ sở dữ liệu và TinyDB
+                new RemoveOrderAsyncTask().execute(listFoodSelected, position);
+            }
 
             // Callback để thông báo hoàn tất việc cập nhật
             updateCallback.run();
         }
     }
+
+    // Trong RemoveOrderAsyncTask
+    private static class RemoveOrderAsyncTask extends AsyncTask<Object, Void, Void> {
+        @Override
+        protected Void doInBackground(Object... params) {
+            try {
+                ArrayList<FoodDomain> listfood = (ArrayList<FoodDomain>) params[0];
+                int position = (int) params[1];
+
+                // Logic xóa dữ liệu trên SQL Server
+                removeFood(listfood.get(position));
+
+                // Logic xóa dữ liệu trên TinyDB
+                listfood.remove(position);
+                tinyDB.putListObject("CartList", listfood);
+
+                // Thông báo cập nhật dữ liệu trong Adapter
+                // Sử dụng runOnUiThread để thực hiện các hoạt động liên quan đến UI
+                ((CartActivity) context).runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        // Gán adapter vào RecyclerView trước khi thông báo
+                        RecyclerView recyclerView = ((CartActivity) context).findViewById(R.id.view6);
+                        recyclerView.setAdapter(adapter);
+                        adapter.notifyDataSetChanged();
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+    }
+
+    private static void removeFood(FoodDomain object) {
+        Connection connect;
+        int userId = SharedData.getInstance().getUserId();
+
+        try {
+            ConnectionHelper connectionHelper = new ConnectionHelper();
+            connect = connectionHelper.connectionclass();
+
+            if (connect != null) {
+                String query = "DELETE FROM [dbo].[Food_order] WHERE User_id = ? AND Food_id = ?";
+
+                try (PreparedStatement preparedStatement = connect.prepareStatement(query)) {
+                    preparedStatement.setInt(1, userId);
+                    preparedStatement.setInt(2, object.getFood_id());
+
+                    int rowsAffected = preparedStatement.executeUpdate();
+                    if (rowsAffected > 0) {
+                        // Deletion successful
+                        Toast.makeText(context, "Item removed from cart!", Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Deletion failed
+                        Toast.makeText(context, "Deletion fail!", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
     private static class UpdateOrderAsyncTask extends AsyncTask<Object, Void, Void> {
         @Override
@@ -169,13 +247,72 @@ public void plusNumberFood(ArrayList<FoodDomain> listfood, int position, Runnabl
         }
     }
 
-    public float getTotalFee(){
+    public float getTotalFee() {
         Food f = new Food();
         ArrayList<FoodDomain> listfood2 = f.GetFoodOrders();
         float fee = 0;
-        for(int i = 0; i<listfood2.size();i++){
+        for (int i = 0; i < listfood2.size(); i++) {
             fee = fee + (listfood2.get(i).getPrice() * listfood2.get(i).getNumberInCart());
         }
         return fee;
     }
+
+    public ArrayList<FoodDomain> getListCart() {
+        int User_id = SharedData.getInstance().getUserId();
+        ArrayList<FoodDomain> cartList = new ArrayList<>();
+
+        Connection connect = null;
+
+        try {
+            ConnectionHelper connectionHelper = new ConnectionHelper();
+            connect = connectionHelper.connectionclass();
+
+            if (connect != null) {
+                // Modified the SQL query to properly retrieve cart items for a specific user
+                String query = "SELECT fo.User_id, fo.Food_id, f.title, f.picUrl, f.price, fo.number_in_cart, fo.total_price\n" +
+                        "FROM Food_order fo\n" +
+                        "JOIN Food f ON fo.Food_id = f.Food_id\n" +
+                        "JOIN [User] u ON fo.User_id = u.User_id\n" +
+                        "WHERE fo.User_id = ?";
+
+                try (PreparedStatement preparedStatement = connect.prepareStatement(query)) {
+                    preparedStatement.setInt(1, User_id);
+
+                    try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                        while (resultSet.next()) {
+                            int foodId = resultSet.getInt("Food_id");
+                            String title = resultSet.getString("title");
+                            String picUrl = resultSet.getString("picUrl");
+                            int price = resultSet.getInt("price");
+                            int numberInCart = resultSet.getInt("number_in_cart");
+                            int totalPrice = resultSet.getInt("total_price");
+
+                            // Create a FoodDomain object with retrieved data
+                            FoodDomain foodDomain = new FoodDomain(foodId, User_id , title, picUrl, price, numberInCart, totalPrice);
+                            foodDomain.setFood_id(foodId);
+                            foodDomain.setTitle(title);
+                            foodDomain.setPicUrl(picUrl);
+                            foodDomain.setPrice(price);
+                            foodDomain.setNumberInCart(numberInCart);
+                            foodDomain.setTotal_price(totalPrice);
+                            cartList.add(foodDomain);
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                if (connect != null) {
+                    connect.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return cartList;
+    }
 }
+

@@ -26,7 +26,9 @@ public class RegistrationActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_registration);
         initView();
-        getBundle();
+        buttonRegister.setOnClickListener(v -> {
+            checkRegister();
+        });
     }
 
     public void checkRegister(){
@@ -38,7 +40,8 @@ public class RegistrationActivity extends AppCompatActivity {
             connect = connectionHelper.connectionclass();
 
             if (connect != null) {
-                String query = "INSERT INTO [dbo].[User] (Full_Name, Email, Password) VALUES ('" + name + "', '" + email + "', '" + password + "')";
+                String query = "INSERT INTO [dbo].[User] (Full_Name, Email, Password) VALUES " +
+                        "('" + name + "', '" + email + "', '" + password + "')";
                 Statement statement = connect.createStatement();
                 statement.executeUpdate(query);
 
@@ -52,11 +55,6 @@ public class RegistrationActivity extends AppCompatActivity {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-    }
-    private void getBundle() {
-        buttonRegister.setOnClickListener(v -> {
-            checkRegister();
-        });
     }
     private void initView() {
         editTextName = findViewById(R.id.name_txt);

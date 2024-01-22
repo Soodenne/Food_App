@@ -320,7 +320,7 @@ public class CartActivity extends AppCompatActivity {
         ArrayList<FoodDomain> items = f.GetFoodOrders();
 
         recyclerViewFood = findViewById(R.id.view6);
-        recyclerViewFood.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+        recyclerViewFood.setLayoutManager(new LinearLayoutManager(CartActivity.this, LinearLayoutManager.VERTICAL, false));
 
         adapterCart = new CartListAdapter(items, this, new ChangeNumberItemsListener() {
             @Override
@@ -333,11 +333,12 @@ public class CartActivity extends AppCompatActivity {
         if(managementCart.getListCart().isEmpty()){
             empty_txt.setVisibility(View.VISIBLE);
             scrollView.setVisibility(View.GONE);
-        }else{
+        } else {
             empty_txt.setVisibility(View.GONE);
             scrollView.setVisibility(View.VISIBLE);
         }
     }
+
     private void calculateCart(){
         float percentTax = 0.02F;
         float delivery = 10;

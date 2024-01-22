@@ -64,6 +64,9 @@ public class DetailActivity extends AppCompatActivity {
             numberOrder_txt.setText("" + numberOrder);
             addToCartBtn.setText("Add to cart - $" + Math.round(numberOrder * object.getPrice()));
         });
+        imageBack.setOnClickListener(v ->{
+            onBackPressed();
+        });
         addToCartBtn.setOnClickListener(v -> {
             object.setNumberInCart(numberOrder);
 
@@ -77,9 +80,6 @@ public class DetailActivity extends AppCompatActivity {
                 managementCart.insertFood(object);
                 Log.d("YourTag", "Record does not exist, inserting");
             }
-        });
-        imageBack.setOnClickListener(v ->{
-            onBackPressed();
         });
     }
     private void initView() {
